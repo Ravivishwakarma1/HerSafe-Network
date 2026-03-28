@@ -3,101 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HerSafe Network - Live Demo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        .sos-btn { animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
-    </style>
+    <title>HerSafe | Guardian Portal</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-50">
-    <div id="root"></div>
+<body>
+    <div id="app" class="app-container">
+        <section id="login-page" class="page active">
+            <div class="card">
+                <h1 class="brand">HerSafe</h1>
+                <p class="subtitle">Guardian Login</p>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="phone" placeholder="+91 00000 00000">
+                </div>
+                <button onclick="requestOTP()" class="btn-primary">Get OTP</button>
+                <div id="otp-section" class="hidden">
+                    <input type="text" id="otp" placeholder="Enter 6-digit OTP">
+                    <button onclick="verifyLogin()" class="btn-primary">Verify & Enter</button>
+                </div>
+            </div>
+        </section>
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+        <section id="verify-page" class="page">
+            <div class="card">
+                <h2>Trust Verification</h2>
+                <p class="info-text">Complete these steps to become a <b>Trusted Guardian</b>.</p>
+                
+                <div class="verify-item">
+                    <span>Step 1: Identity Check</span>
+                    <input type="file" id="selfie" accept="image/*" class="file-input">
+                    <label for="selfie" class="btn-outline">Upload Selfie</label>
+                </div>
 
-    <script>
-        const e = React.createElement;
+                <div class="verify-item">
+                    <span>Step 2: Social Link (Optional)</span>
+                    <input type="url" id="social-link" placeholder="LinkedIn or Instagram URL">
+                </div>
 
-        // --- Simplified State Management ---
-        function App() {
-            const [view, setView] = React.useState('login'); // login, setup, dashboard
-            const [user, setUser] = React.useState(null);
-            const [phone, setPhone] = React.useState('');
-
-            const handleLogin = () => {
-                if (!phone) return alert("Enter a number");
-                const userData = { phone, name: phone === '1' ? 'Priya (Guardian)' : '', role: phone === '1' ? 'guardian' : 'traveler' };
-                setUser(userData);
-                setView(userData.name ? 'dashboard' : 'setup');
-            };
-
-            // --- Login Screen ---
-            if (view === 'login') {
-                return e('div', { className: 'min-h-screen flex items-center justify-center p-6' },
-                    e('div', { className: 'max-w-sm w-full text-center' },
-                        e('div', { className: 'w-20 h-20 bg-purple-600 rounded-3xl mx-auto mb-8 flex items-center justify-center text-white text-4xl' }, 
-                            e('i', { className: 'fas fa-shield-heart' })
-                        ),
-                        e('h1', { className: 'text-4xl font-black text-gray-900 mb-2' }, 'HerSafe'),
-                        e('p', { className: 'text-gray-500 mb-8' }, 'Safety for solo women travelers.'),
-                        e('input', { 
-                            type: 'tel', 
-                            placeholder: 'Mobile Number', 
-                            className: 'w-full p-4 border rounded-2xl mb-4 outline-none focus:ring-2 focus:ring-purple-500',
-                            value: phone,
-                            onChange: (event) => setPhone(event.target.value)
-                        }),
-                        e('button', { 
-                            onClick: handleLogin,
-                            className: 'w-full bg-purple-600 text-white p-4 rounded-2xl font-bold text-lg shadow-lg'
-                        }, 'Get Started'),
-                        e('p', { className: 'text-xs text-gray-400 mt-6' }, "Demo: Enter '1' for Guardian, anything else for Traveler")
-                    )
-                );
-            }
-
-            // --- Setup Screen ---
-            if (view === 'setup') {
-                return e('div', { className: 'min-h-screen p-8 flex flex-col justify-center max-w-sm mx-auto' },
-                    e('h2', { className: 'text-3xl font-black mb-6' }, 'Almost there...'),
-                    e('input', { 
-                        placeholder: 'Your Name', 
-                        className: 'w-full p-4 border rounded-2xl mb-8',
-                        onChange: (event) => setUser({...user, name: event.target.value})
-                    }),
-                    e('button', { 
-                        onClick: () => setView('dashboard'),
-                        className: 'w-full bg-purple-600 text-white p-4 rounded-2xl font-bold shadow-lg'
-                    }, 'Complete Setup')
-                );
-            }
-
-            // --- Dashboard Screen ---
-            return e('div', { className: 'max-w-md mx-auto min-h-screen bg-white p-6 relative' },
-                e('header', { className: 'flex justify-between items-center mb-8' },
-                    e('span', { className: 'text-2xl font-black text-purple-700' }, 'HerSafe'),
-                    e('button', { onClick: () => window.location.reload(), className: 'text-gray-400' }, e('i', { className: 'fas fa-power-off' }))
-                ),
-                e('div', { className: 'bg-purple-700 p-8 rounded-[2.5rem] text-white mb-8 shadow-xl' },
-                    e('h2', { className: 'text-2xl font-bold' }, `Hi, ${user.name}`),
-                    e('p', { className: 'text-purple-100' }, user.role === 'guardian' ? 'You are protecting Jaipur' : 'You are safe in Jaipur')
-                ),
-                e('h3', { className: 'font-black text-lg mb-4' }, user.role === 'guardian' ? 'Active Alerts' : 'Guardians Nearby'),
-                e('div', { className: 'p-8 border-2 border-dashed rounded-3xl text-center text-gray-400' }, 
-                    user.role === 'guardian' ? 'No emergency alerts right now.' : '3 Guardians are active nearby.'
-                ),
-                user.role === 'traveler' && e('button', { className: 'sos-btn fixed bottom-8 right-8 bg-red-600 text-white w-20 h-20 rounded-full font-black shadow-2xl border-4 border-white' }, 'SOS')
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(App));
-    </script>
+                <button onclick="submitVerification()" class="btn-success">Submit for Verification</button>
+            </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
