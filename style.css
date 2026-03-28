@@ -1,72 +1,123 @@
-:root {
-    --primary-purple: #7C3AED;
-    --safety-green: #10B981;
-    --bg-light: #F9FAFB;
-    --text-dark: #1F2937;
+let userData = { role: '', name: '', city: '', bio: '', social: '', lang: '', trips: [], helps: [] };
+let countdownTimer;
+
+const sampleGuardians = [{n:"Suman Devi", r:"5.0"}, {n:"Neha Singh", r:"4.8"}];
+const sampleTrips = [{dest:"Varanasi", dist:"20", mode:"Train", days:"2 Days"}];
+const sampleHelps = [{name:"Anjali K.", date:"2026-03-20", loc:"Railway Station"}];
+
+function navigateTo(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
 }
 
-body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background-color: var(--bg-light);
-    color: var(--text-dark);
+function selectRole(role) {
+    userData.role = role;
+    navigateTo('login-page');
 }
 
-.app-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
+function sendEmailCode() {
+    navigateTo('otp-page');
+    startCountdown();
 }
 
-.card {
-    background: white;
-    padding: 2rem;
-    border-radius: 1.5rem;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-    width: 100%;
-    max-width: 380px;
-    text-align: center;
+function startCountdown() {
+    let sec = 60;
+    const display = document.getElementById('seconds');
+    const resendBtn = document.getElementById('resend-btn');
+    clearInterval(countdownTimer);
+    resendBtn.classList.add('hidden');
+    
+    countdownTimer = setInterval(() => {
+        sec--;
+        display.innerText = sec;
+        if (sec <= 0) {
+            clearInterval(countdownTimer);
+            resendBtn.classList.remove('hidden');
+        }
+    }, 1000);
 }
 
-.brand { color: var(--primary-purple); font-size: 2rem; margin-bottom: 0.5rem; }
-.subtitle { color: #6B7280; margin-bottom: 2rem; }
-
-.input-group { text-align: left; margin-bottom: 1.5rem; }
-input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    border: 1px solid #E5E7EB;
-    border-radius: 8px;
-    box-sizing: border-box;
+function verifyAndProfile() {
+    if (document.getElementById('otp-input').value === "888888") {
+        navigateTo('setup-page');
+    } else {
+        alert("Use 888888");
+    }
 }
 
-.btn-primary {
-    background: var(--primary-purple);
-    color: white;
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
+function finishOnboarding() {
+    userData.name = document.getElementById('setup-name').value || "Ravi Vishwakarma";
+    userData.city = document.getElementById('setup-city').value || "Chandauli";
+    userData.bio = document.getElementById('setup-bio').value || "Passionate about safe travel.";
+    userData.social = document.getElementById('setup-social').value || "instagram.com/ravi";
+    userData.lang = document.getElementById('setup-lang').value || "Hindi, English";
+    
+    setupDashboard();
+    navigateTo('main-dashboard');
 }
 
-.btn-success {
-    background: var(--safety-green);
-    color: white;
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    margin-top: 1rem;
+function setupDashboard() {
+    document.getElementById('dash-welcome').innerText = `Hi, ${userData.name}!`;
+    document.getElementById('dash-city').innerText = userData.city;
+    document.getElementById('acc-name-display').innerText = userData.name;
+    document.getElementById('acc-role-display').innerText = userData.role;
+    document.getElementById('acc-bio-display').innerText = userData.bio;
+    document.getElementById('acc-social-display').innerText = userData.social;
+    document.getElementById('acc-lang-display').innerText = userData.lang;
+    document.getElementById('acc-active-time').innerText = new Date().toLocaleTimeString();
+
+    const isG = userData.role === 'Guardian';
+    document.getElementById('traveler-home').classList.toggle('hidden', isG);
+    document.getElementById('guardian-home').classList.toggle('hidden', !isG);
+    document.getElementById('guardian-acc-fields').classList.toggle('hidden', !isG);
+    document.getElementById('traveler-acc-fields').classList.toggle('hidden', isG);
+    document.getElementById('trip-header').innerText = isG ? "Help History" : "My Trips";
+    document.getElementById('nav-label').innerText = isG ? "Helps" : "Trips";
+    document.getElementById('add-btn').classList.toggle('hidden', isG);
+
+    renderGuardians();
+    renderTripsOrHelps();
 }
 
-.page { display: none; }
-.page.active { display: block; }
-.hidden { display: none; }
-.verify-item { margin-bottom: 1.5rem; text-align: left; }
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+
+function renderGuardians() {
+    const list = document.getElementById('guardian-list');
+    list.innerHTML = sampleGuardians.map(g => `<div class="trip-item" style="border-left-color: var(--g)"><b>${g.n}</b><br><small>⭐ ${g.r} • Trusted</small></div>`).join('');
+}
+
+function calcDays() {
+    const d1 = new Date(document.getElementById('t-dep').value);
+    const d2 = new Date(document.getElementById('t-arr').value);
+    if (d1 && d2) {
+        const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+        document.getElementById('t-days').value = diff >= 0 ? diff + " Days" : "0 Days";
+    }
+}
+
+function saveTrip() {
+    const trip = { dest: document.getElementById('t-dest').value, dist: document.getElementById('t-dist').value, days: document.getElementById('t-days').value, mode: document.getElementById('t-mode').value };
+    userData.trips.unshift(trip);
+    renderTripsOrHelps();
+    closeTripModal();
+}
+
+function renderTripsOrHelps() {
+    const list = document.getElementById('trips-list');
+    if (userData.role === 'Guardian') {
+        list.innerHTML = sampleHelps.map(h => `<div class="trip-item" style="border-left-color: var(--g)"><b>Helped ${h.name}</b><br><small>${h.date} • ${h.loc}</small></div>`).join('');
+    } else {
+        const allTrips = [...userData.trips, ...sampleTrips];
+        list.innerHTML = allTrips.map(t => `<div class="trip-item"><b>${t.dest}</b><br><small>${t.dist}km • ${t.days} • ${t.mode}</small></div>`).join('');
+    }
+}
+
+function triggerSOS() { alert("🚨 SOS ALERT! Nearby Guardians Notified."); }
+function openTripModal() { document.getElementById('trip-modal').classList.remove('hidden'); }
+function closeTripModal() { document.getElementById('trip-modal').classList.add('hidden'); }
+function updateDutyStatus() { alert("Duty status updated."); }
