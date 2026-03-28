@@ -8,17 +8,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         .sos-btn { animation: pulse 1.5s infinite; transition: transform 0.2s; }
-        .sos-btn:active { transform: scale(0.95); }
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
             70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
-        .map-placeholder { background: #e2e8f0; height: 180px; border-radius: 1.5rem; display: flex; align-items: center; justify-content: center; color: #64748b; border: 2px dashed #cbd5e1; margin-bottom: 1.5rem; }
-        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); }
+        .map-placeholder { background: #f1f5f9; height: 180px; border-radius: 2rem; display: flex; align-items: center; justify-content: center; color: #94a3b8; border: 2px dashed #e2e8f0; margin-bottom: 2rem; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="bg-white">
     <div id="root"></div>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -27,7 +25,9 @@
     <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js" crossorigin></script>
 
     <script type="text/babel" data-presets="env,react">
-        const { HashRouter, Routes, Route, Link, Navigate, useNavigate, useParams, useLocation } = ReactRouterDOM;
+        // FAIL-SAFE: Check both potential names for the Router library
+        const RouterLib = window.ReactRouterDOM || window.ReactRouter;
+        const { HashRouter, Routes, Route, Link, Navigate, useNavigate, useParams, useLocation } = RouterLib;
         const { useState, useEffect, useRef, createContext, useContext } = React;
 
         // --- Data Persistence ---
@@ -48,64 +48,56 @@
         const AuthContext = createContext();
         function AuthProvider({ children }) {
             const [user, setUser] = useState(Storage.currentUser());
-
             const login = (phone) => {
                 const users = Storage.get('hs_users');
-                let u = users.find(x => x.phone === phone) || { id: 'u'+Date.now(), phone, name: '', city: '', role: 'traveler' };
+                let u = users.find(x => x.phone === phone) || { id: 'u'+Date.now(), phone, name: '', city: 'Jaipur', role: 'traveler' };
                 if (!users.find(x => x.phone === phone)) { users.push(u); Storage.set('hs_users', users); }
                 Storage.currentUser(u); setUser(u);
                 return u;
             };
-
             const logout = () => { localStorage.removeItem('hs_session'); setUser(null); };
-
             const updateProfile = (data) => {
                 const users = Storage.get('hs_users');
                 const idx = users.findIndex(x => x.id === user.id);
                 const updated = { ...user, ...data };
                 users[idx] = updated; Storage.set('hs_users', users); Storage.currentUser(updated); setUser(updated);
             };
-
             return <AuthContext.Provider value={{ user, login, logout, updateProfile }}>{children}</AuthContext.Provider>;
         }
         const useAuth = () => useContext(AuthContext);
 
-        // --- Components ---
+        // --- UI Screens ---
         function Login() {
             const [phone, setPhone] = useState('');
             const { login } = useAuth();
             const nav = useNavigate();
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-white p-8">
-                    <div className="w-full max-w-sm">
-                        <div className="w-16 h-16 bg-purple-600 rounded-2xl mb-6 flex items-center justify-center text-white text-3xl shadow-lg">
-                            <i className="fas fa-shield-heart"></i>
-                        </div>
-                        <h1 className="text-4xl font-black text-gray-900 mb-2">HerSafe</h1>
-                        <p className="text-gray-500 mb-10 leading-relaxed">Trusted guardians for every solo journey. Join the network of safety.</p>
-                        <input type="tel" placeholder="Mobile Number" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-4 focus:ring-2 focus:ring-purple-500 outline-none" />
-                        <button onClick={() => { login(phone); nav('/'); }} className="w-full bg-purple-600 text-white p-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-purple-700 transition-colors">Get Started</button>
-                        <p className="text-xs text-center text-gray-400 mt-8">Try '1' for Guardian Demo or any other for Traveler</p>
+                <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-20 h-20 bg-purple-600 rounded-[2rem] mb-8 flex items-center justify-center text-white text-4xl shadow-xl shadow-purple-200">
+                        <i className="fas fa-shield-heart"></i>
                     </div>
+                    <h1 className="text-4xl font-black text-gray-900 mb-4">HerSafe</h1>
+                    <p className="text-gray-500 mb-10 max-w-xs leading-relaxed">Safety network for women. Connect with trusted local guardians.</p>
+                    <input type="tel" placeholder="Mobile Number" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full max-w-sm p-5 bg-gray-50 border border-gray-100 rounded-3xl mb-4 focus:ring-2 focus:ring-purple-500 outline-none transition-all" />
+                    <button onClick={() => { login(phone); nav('/'); }} className="w-full max-w-sm bg-purple-600 text-white p-5 rounded-3xl font-bold text-lg shadow-xl hover:bg-purple-700 transition-all">Get Started</button>
+                    <p className="text-xs text-gray-400 mt-10 uppercase tracking-widest font-bold">Try '1' for Guardian Demo</p>
                 </div>
             );
         }
 
         function Setup() {
-            const { updateProfile } = useAuth();
-            const [f, setF] = useState({ name: '', city: 'Jaipur', role: 'traveler' });
+            const { user, updateProfile } = useAuth();
+            const [f, setF] = useState({ name: '', city: user.city || 'Jaipur', role: 'traveler' });
             const nav = useNavigate();
             return (
-                <div className="min-h-screen p-8 bg-white flex flex-col justify-center">
-                    <h2 className="text-3xl font-black mb-2">Tell us about you</h2>
-                    <p className="text-gray-500 mb-8">This helps us connect you to the right people.</p>
-                    <input placeholder="Your Name" className="w-full p-4 border rounded-2xl mb-4" onChange={e=>setF({...f, name: e.target.value})} />
-                    <input placeholder="Your Current City" className="w-full p-4 border rounded-2xl mb-4" value={f.city} onChange={e=>setF({...f, city: e.target.value})} />
-                    <select className="w-full p-4 border rounded-2xl mb-8 appearance-none bg-white" onChange={e=>setF({...f, role: e.target.value})}>
+                <div className="min-h-screen p-10 flex flex-col justify-center max-w-sm mx-auto">
+                    <h2 className="text-3xl font-black text-gray-900 mb-8">Setup Profile</h2>
+                    <input placeholder="Your Name" className="w-full p-4 border rounded-2xl mb-4 bg-gray-50" onChange={e=>setF({...f, name: e.target.value})} />
+                    <select className="w-full p-4 border rounded-2xl mb-10 bg-gray-50 appearance-none font-bold" onChange={e=>setF({...f, role: e.target.value})}>
                         <option value="traveler">I am a Traveler</option>
                         <option value="guardian">I am a Guardian</option>
                     </select>
-                    <button onClick={() => { updateProfile(f); nav('/'); }} className="w-full bg-purple-600 text-white p-4 rounded-2xl font-bold shadow-lg">Finish Setup</button>
+                    <button onClick={() => { updateProfile(f); nav('/'); }} className="w-full bg-purple-600 text-white p-5 rounded-3xl font-black shadow-lg">Enter Dashboard</button>
                 </div>
             );
         }
@@ -113,134 +105,69 @@
         function Traveler() {
             const { user, logout } = useAuth();
             const guardians = Storage.get('hs_users').filter(u => u.role === 'guardian' && u.city === user.city);
-            const [sos, setSos] = useState(false);
-
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-white pb-24">
-                    <header className="p-6 flex justify-between items-center bg-white sticky top-0 z-10">
+                <div className="max-w-md mx-auto min-h-screen pb-20 p-6">
+                    <header className="flex justify-between items-center mb-10">
                         <span className="text-2xl font-black text-purple-700">HerSafe</span>
-                        <button onClick={logout} className="w-10 h-10 bg-gray-50 rounded-full text-gray-400 flex items-center justify-center">
-                            <i className="fas fa-sign-out-alt"></i>
+                        <button onClick={logout} className="w-12 h-12 bg-gray-50 rounded-2xl text-gray-400 flex items-center justify-center">
+                            <i className="fas fa-power-off"></i>
                         </button>
                     </header>
-                    
-                    <div className="px-6">
-                        <div className="bg-gradient-to-br from-purple-700 to-indigo-800 p-8 rounded-[2.5rem] text-white mb-8 shadow-2xl relative overflow-hidden">
-                            <div className="relative z-10">
-                                <h2 className="text-2xl font-bold">Hello, {user.name}</h2>
-                                <p className="text-purple-100 mt-1">Explore {user.city} with confidence.</p>
-                            </div>
-                            <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full"></div>
-                        </div>
-
-                        <h3 className="font-black text-gray-900 mb-4 text-xl">Trusted Guardians</h3>
-                        <div className="space-y-4">
-                            {guardians.map(g => (
-                                <div key={g.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-3xl bg-white card-shadow">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-700 font-bold text-xl">{g.name[0]}</div>
-                                        <div>
-                                            <p className="font-bold text-gray-900">{g.name}</p>
-                                            <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
-                                                <span className="bg-purple-50 px-2 py-0.5 rounded-md">{g.badge}</span>
-                                                <span>⭐ {g.rating}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Link to={`/chat/${g.id}?name=${g.name}`} className="bg-gray-900 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
-                                        <i className="fas fa-comment"></i>
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-8">
-                            <div className="map-placeholder">
-                                <i className="fas fa-location-crosshairs mr-2"></i> Initializing Map...
-                            </div>
-                        </div>
+                    <div className="bg-purple-700 p-8 rounded-[3rem] text-white mb-10 shadow-2xl relative overflow-hidden">
+                        <h2 className="text-3xl font-bold mb-1">Hi, {user.name}</h2>
+                        <p className="text-purple-100 opacity-80">You're in Jaipur</p>
                     </div>
-
-                    <button onClick={() => setSos(true)} className="sos-btn fixed bottom-8 right-8 bg-red-600 text-white w-20 h-20 rounded-full font-black shadow-2xl z-50 text-sm">SOS</button>
-                    
-                    {sos && (
-                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-6" onClick={()=>setSos(false)}>
-                            <div className="bg-white w-full max-w-xs rounded-[3rem] p-8 text-center" onClick={e=>e.stopPropagation()}>
-                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl animate-pulse">
-                                    <i className="fas fa-tower-broadcast"></i>
+                    <h3 className="font-black text-xl mb-6">Local Guardians</h3>
+                    <div className="space-y-4">
+                        {guardians.map(g => (
+                            <div key={g.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-[2.5rem] bg-white shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-700 font-black text-xl">{g.name[0]}</div>
+                                    <div>
+                                        <p className="font-black text-gray-900 leading-none mb-1">{g.name}</p>
+                                        <p className="text-xs font-bold text-purple-500 uppercase tracking-tighter">{g.badge} • ⭐ {g.rating}</p>
+                                    </div>
                                 </div>
-                                <h2 className="text-3xl font-black text-red-600">Emergency</h2>
-                                <p className="text-gray-500 mt-3 leading-relaxed">Alerting 3 nearby guardians and local authorities...</p>
-                                <button className="mt-8 w-full bg-gray-900 text-white p-4 rounded-2xl font-bold" onClick={()=>setSos(false)}>I am safe now</button>
+                                <Link to={`/chat/${g.id}?name=${g.name}`} className="bg-gray-900 text-white w-12 h-12 rounded-2xl flex items-center justify-center">
+                                    <i className="fas fa-comment"></i>
+                                </Link>
                             </div>
-                        </div>
-                    )}
+                        ))}
+                    </div>
+                    <button className="sos-btn fixed bottom-8 right-8 bg-red-600 text-white w-24 h-24 rounded-full font-black shadow-2xl z-50 text-xl border-8 border-white">SOS</button>
                 </div>
             );
         }
 
         function Guardian() {
             const { user, logout, updateProfile } = useAuth();
-            const toggle = () => updateProfile({ available: !user.available });
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-white p-8">
-                    <header className="flex justify-between items-center mb-12">
-                        <span className="text-3xl font-black text-emerald-600">Guardian</span>
-                        <button onClick={logout} className="text-gray-400"><i className="fas fa-power-off"></i></button>
-                    </header>
-                    <div className={`p-10 rounded-[3rem] mb-8 text-center border-4 transition-all duration-500 ${user.available ? 'bg-emerald-50 border-emerald-100 shadow-xl' : 'bg-gray-50 border-gray-100'}`}>
-                        <div className={`text-6xl mb-6 ${user.available ? 'text-emerald-500' : 'text-gray-300'}`}>
-                            <i className={`fas ${user.available ? 'fa-circle-check' : 'fa-circle-dot'}`}></i>
-                        </div>
-                        <h2 className="text-2xl font-black text-gray-900">{user.available ? 'Active Status' : 'Inactive'}</h2>
-                        <p className="text-gray-500 mt-2">{user.available ? 'You are visible to travelers in need.' : 'Turn on to start helping.'}</p>
-                        <button onClick={toggle} className={`mt-8 w-full py-4 rounded-2xl font-black text-white shadow-lg transition-all ${user.available ? 'bg-emerald-600' : 'bg-gray-900'}`}>
-                            {user.available ? 'Go Offline' : 'Go Online'}
-                        </button>
-                    </div>
-                    <h3 className="font-black text-xl mb-4">Live Alerts</h3>
-                    <div className="p-6 border border-gray-100 rounded-3xl text-gray-400 text-center italic text-sm">
-                        No active requests in {user.city} right now.
-                    </div>
+                <div className="max-w-md mx-auto min-h-screen p-8 text-center flex flex-col justify-center">
+                    <div className="text-8xl mb-6 text-emerald-500"><i className="fas fa-shield-check"></i></div>
+                    <h1 className="text-3xl font-black text-gray-900 mb-2">Guardian Active</h1>
+                    <p className="text-gray-500 mb-10">You are helping keep {user.city} safe. We'll alert you if someone needs help.</p>
+                    <button onClick={logout} className="bg-gray-100 p-5 rounded-3xl font-bold w-full text-gray-600">Logout</button>
                 </div>
             );
         }
 
         function Chat() {
             const { chatId } = useParams();
-            const name = new URLSearchParams(useLocation().search).get('name') || 'Guardian';
-            const [msgs, setMsgs] = useState([{ id: 1, text: `Hello! I see you are nearby. Need any help with directions?`, me: false }]);
-            const [input, setInput] = useState('');
-            const endRef = useRef(null);
-
-            useEffect(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), [msgs]);
-
-            const send = () => {
-                if (!input.trim()) return;
-                setMsgs([...msgs, { id: Date.now(), text: input, me: true }]);
-                setInput('');
-            };
-
+            const name = new URLSearchParams(useLocation().search).get('name') || 'Help';
             return (
-                <div className="max-w-md mx-auto h-screen bg-white flex flex-col">
-                    <div className="p-6 bg-purple-700 text-white flex items-center gap-4 shadow-xl z-10">
+                <div className="max-w-md mx-auto h-screen flex flex-col">
+                    <div className="p-6 bg-purple-700 text-white flex items-center gap-4 shadow-xl">
                         <Link to="/"><i className="fas fa-arrow-left"></i></Link>
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-bold">{name[0]}</div>
-                        <span className="font-black">{name}</span>
+                        <span className="font-black text-xl">Chat with {name}</span>
                     </div>
-                    <div className="flex-1 p-6 space-y-4 overflow-y-auto bg-gray-50">
-                        {msgs.map(m => (
-                            <div key={m.id} className={`flex ${m.me ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] p-4 rounded-3xl font-semibold shadow-sm ${m.me ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
-                                    {m.text}
-                                </div>
-                            </div>
-                        ))}
-                        <div ref={endRef} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                        <div className="bg-white p-5 rounded-3xl rounded-tl-none shadow-sm max-w-[85%] font-bold text-gray-800 border border-gray-100">
+                            Hi {name}! I'm solo traveling nearby. Can you guide me?
+                        </div>
                     </div>
-                    <div className="p-4 bg-white border-t flex gap-2">
-                        <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Type a message..." className="flex-1 bg-gray-50 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-purple-500 outline-none" onKeyPress={e=>e.key==='Enter' && send()}/>
-                        <button onClick={send} className="bg-purple-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"><i className="fas fa-paper-plane"></i></button>
+                    <div className="p-4 border-t flex gap-3 bg-white">
+                        <input className="flex-1 bg-gray-50 rounded-2xl px-6 py-4 outline-none border border-transparent focus:border-purple-500" placeholder="Type..." />
+                        <button className="bg-purple-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"><i className="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             );
@@ -259,7 +186,7 @@
             );
         }
 
-        // Use HashRouter for GitHub Pages compatibility
+        // START APP
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(
             <HashRouter>
