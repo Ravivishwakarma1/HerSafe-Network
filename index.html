@@ -21,670 +21,183 @@
 <body>
 <div id="root"></div>
 
-<script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/react-router-dom@6.20.0/dist/umd/react-router-dom.development.js"></script>
-<script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-router-dom@6.22.3/dist/umd/react-router-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js" crossorigin></script>
 
-<script type="text/babel">
-    // ---------- Data Models & Helpers ----------
+<script type="text/babel" data-presets="react,stage-2">
+    const { HashRouter, Routes, Route, Link, Navigate, useNavigate, useParams, useLocation } = ReactRouterDOM;
+    const { useState, useEffect, useRef, createContext, useContext } = React;
+
+    // ---------- Storage Logic ----------
     const STORAGE_KEYS = {
         USERS: 'hersafe_users',
-        SESSIONS: 'hersafe_sessions',
         HELP_REQUESTS: 'hersafe_help_requests',
         CHATS: 'hersafe_chats',
-        SOS_ALERTS: 'hersafe_sos_alerts',
-        RATINGS: 'hersafe_ratings'
+        SOS_ALERTS: 'hersafe_sos_alerts'
     };
 
-    // Helper to load/store data in localStorage
-    function loadData(key, defaultValue = []) {
-        const stored = localStorage.getItem(key);
-        return stored ? JSON.parse(stored) : defaultValue;
-    }
-    function saveData(key, data) {
-        localStorage.setItem(key, JSON.stringify(data));
-    }
+    const loadData = (key, def = []) => JSON.parse(localStorage.getItem(key)) || def;
+    const saveData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
-    // Default mock guardians
-    const defaultGuardians = [
-        { id: 'g1', name: 'Priya Sharma', city: 'Jaipur', photoURL: '', verificationBadge: 'Trusted', ratingAvg: 4.8, helpsCompleted: 12, isAvailable: true, joinDate: '2024-01-15', profileCompleteness: 100, socialLink: 'https://instagram.com/priya' },
-        { id: 'g2', name: 'Anjali Mehta', city: 'Jaipur', photoURL: '', verificationBadge: 'Basic Verified', ratingAvg: 4.2, helpsCompleted: 5, isAvailable: true, joinDate: '2024-02-20', profileCompleteness: 85 },
-        { id: 'g3', name: 'Deepa Nair', city: 'Mumbai', photoURL: '', verificationBadge: 'Trusted', ratingAvg: 4.9, helpsCompleted: 20, isAvailable: false, joinDate: '2023-11-01', profileCompleteness: 100 }
-    ];
-
-    // Initialize storage with default users (if empty)
+    // Initialize Mock Data
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-        // Add two default guardian users plus one traveler example
-        const initialUsers = [
-            { id: 'g1', phone: '+919876543210', name: 'Priya Sharma', city: 'Jaipur', role: 'guardian', photoURL: '', verificationBadge: 'Trusted', ratingAvg: 4.8, helpsCompleted: 12, isAvailable: true, joinDate: '2024-01-15', profileCompleteness: 100, socialLink: 'https://instagram.com/priya' },
-            { id: 'g2', phone: '+919876543211', name: 'Anjali Mehta', city: 'Jaipur', role: 'guardian', photoURL: '', verificationBadge: 'Basic Verified', ratingAvg: 4.2, helpsCompleted: 5, isAvailable: true, joinDate: '2024-02-20', profileCompleteness: 85 },
-            { id: 'traveler_demo', phone: '+919876543212', name: 'Riya Singh', city: 'Jaipur', role: 'traveler', photoURL: '', joinDate: '2024-03-01' }
-        ];
-        saveData(STORAGE_KEYS.USERS, initialUsers);
+        saveData(STORAGE_KEYS.USERS, [
+            { id: 'g1', phone: '1', name: 'Priya Sharma', city: 'Jaipur', role: 'guardian', verificationBadge: 'Trusted', ratingAvg: 4.8, helpsCompleted: 12, isAvailable: true, joinDate: new Date().toISOString() },
+            { id: 't1', phone: '2', name: 'Riya Singh', city: 'Jaipur', role: 'traveler', joinDate: new Date().toISOString() }
+        ]);
     }
 
-    // Helper to get current session user
-    function getCurrentUser() {
-        const session = localStorage.getItem('hersafe_current_user');
-        return session ? JSON.parse(session) : null;
-    }
-
-    function setCurrentUser(user) {
-        if (user) {
-            localStorage.setItem('hersafe_current_user', JSON.stringify(user));
-        } else {
-            localStorage.removeItem('hersafe_current_user');
-        }
-    }
-
-    // ---------- React Components ----------
-    const { useState, useEffect, useRef, createContext, useContext } = React;
-    const { BrowserRouter, Routes, Route, Link, Navigate, useNavigate, useParams, useLocation } = ReactRouterDOM;
-
-    // Auth Context
+    // ---------- Auth Context ----------
     const AuthContext = createContext();
     function AuthProvider({ children }) {
-        const [user, setUser] = useState(null);
-        const [profile, setProfile] = useState(null);
-        const [loading, setLoading] = useState(true);
-
-        useEffect(() => {
-            const current = getCurrentUser();
-            if (current) {
-                setUser(current);
-                setProfile(current);
-            }
-            setLoading(false);
-        }, []);
-
+        const [user, setUser] = useState(JSON.parse(localStorage.getItem('hersafe_session')));
+        
         const login = (phone) => {
             const users = loadData(STORAGE_KEYS.USERS);
-            let existing = users.find(u => u.phone === phone);
-            if (!existing) {
-                // create new user placeholder (will complete profile later)
-                const newUser = { id: 'user_' + Date.now(), phone, name: '', city: '', role: 'traveler', joinDate: new Date().toISOString() };
-                users.push(newUser);
-                saveData(STORAGE_KEYS.USERS, users);
-                existing = newUser;
-            }
-            setCurrentUser(existing);
-            setUser(existing);
-            setProfile(existing);
-            return existing;
+            let found = users.find(u => u.phone === phone) || { id: 'u_'+Date.now(), phone, name: '', city: '', role: 'traveler' };
+            if (!users.find(u => u.phone === phone)) { users.push(found); saveData(STORAGE_KEYS.USERS, users); }
+            localStorage.setItem('hersafe_session', JSON.stringify(found));
+            setUser(found);
+            return found;
         };
 
-        const logout = () => {
-            setCurrentUser(null);
-            setUser(null);
-            setProfile(null);
-        };
+        const logout = () => { localStorage.removeItem('hersafe_session'); setUser(null); };
 
-        const updateProfile = (updatedData) => {
+        const updateProfile = (data) => {
             const users = loadData(STORAGE_KEYS.USERS);
-            const index = users.findIndex(u => u.id === profile.id);
-            if (index !== -1) {
-                const newProfile = { ...users[index], ...updatedData };
-                users[index] = newProfile;
-                saveData(STORAGE_KEYS.USERS, users);
-                setCurrentUser(newProfile);
-                setProfile(newProfile);
-            }
+            const idx = users.findIndex(u => u.id === user.id);
+            const updated = { ...user, ...data };
+            users[idx] = updated;
+            saveData(STORAGE_KEYS.USERS, users);
+            localStorage.setItem('hersafe_session', JSON.stringify(updated));
+            setUser(updated);
         };
 
-        return (
-            <AuthContext.Provider value={{ user, profile, loading, login, logout, updateProfile }}>
-                {children}
-            </AuthContext.Provider>
-        );
+        return <AuthContext.Provider value={{ user, login, logout, updateProfile }}>{children}</AuthContext.Provider>;
     }
     const useAuth = () => useContext(AuthContext);
 
-    // ---------- Pages ----------
+    // ---------- Components ----------
     function PhoneAuth() {
         const [phone, setPhone] = useState('');
-        const [error, setError] = useState('');
         const { login } = useAuth();
-        const navigate = useNavigate();
-
-        const handleSubmit = () => {
-            if (!phone.trim()) return setError('Enter phone number');
-            const user = login(phone);
-            if (!user.name || !user.city) {
-                navigate('/profile-setup');
-            } else {
-                navigate(user.role === 'traveler' ? '/traveler-dashboard' : '/guardian-dashboard');
-            }
-        };
+        const nav = useNavigate();
         return (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-green-50">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-                    <h2 className="text-3xl font-bold text-purple-700 text-center">HerSafe Network</h2>
-                    <p className="text-gray-500 text-center mt-2">Safe travels, trusted guardians</p>
-                    <div className="mt-6">
-                        <input type="tel" placeholder="+91 9876543210" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full p-3 border rounded-xl" />
-                        <button onClick={handleSubmit} className="w-full bg-purple-600 text-white p-3 rounded-xl mt-4 font-semibold">Send OTP (Demo)</button>
-                        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                        <p className="text-xs text-gray-400 mt-4 text-center">Demo: any number works, try +919876543210 (guardian) or +919876543212 (traveler)</p>
-                    </div>
+            <div className="min-h-screen flex items-center justify-center p-4 bg-purple-50">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <h2 className="text-3xl font-bold text-purple-700">HerSafe Network</h2>
+                    <input type="tel" placeholder="Enter '1' for Guardian, '2' for Traveler" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full p-3 border rounded-xl mt-6" />
+                    <button onClick={() => { login(phone); nav('/'); }} className="w-full bg-purple-600 text-white p-3 rounded-xl mt-4 font-bold">Login</button>
                 </div>
             </div>
         );
     }
 
     function ProfileSetup() {
-        const { profile, updateProfile } = useAuth();
-        const navigate = useNavigate();
-        const [name, setName] = useState(profile?.name || '');
-        const [city, setCity] = useState(profile?.city || '');
-        const [role, setRole] = useState(profile?.role || 'traveler');
-        const [photoPreview, setPhotoPreview] = useState('');
-        const [selfiePreview, setSelfiePreview] = useState('');
-        const [socialLink, setSocialLink] = useState('');
-
-        const handlePhotoUpload = (e, setter) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onloadend = () => setter(reader.result);
-            reader.readAsDataURL(file);
-        };
-
-        const handleSubmit = () => {
-            if (!name || !city) return alert('Please fill all fields');
-            let verificationBadge = 'Basic Verified';
-            let completeness = 70;
-            if (selfiePreview) completeness = 85;
-            if (socialLink && selfiePreview) {
-                verificationBadge = 'Trusted';
-                completeness = 100;
-            }
-            const updatedProfile = {
-                ...profile,
-                name, city, role,
-                photoURL: photoPreview || profile.photoURL || '',
-                selfieURL: selfiePreview || '',
-                socialLink: socialLink || profile.socialLink || '',
-                verificationBadge,
-                profileCompleteness: completeness,
-                isAvailable: role === 'guardian' ? true : false,
-                joinDate: profile.joinDate || new Date().toISOString(),
-                ratingAvg: profile.ratingAvg || 0,
-                helpsCompleted: profile.helpsCompleted || 0,
-            };
-            updateProfile(updatedProfile);
-            navigate(role === 'traveler' ? '/traveler-dashboard' : '/guardian-dashboard');
-        };
-
+        const { user, updateProfile } = useAuth();
+        const [form, setForm] = useState({ name: '', city: '', role: 'traveler' });
+        const nav = useNavigate();
         return (
-            <div className="min-h-screen p-4 bg-gray-50 flex items-center justify-center">
-                <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full">
-                    <h2 className="text-2xl font-bold text-purple-700">Complete Profile</h2>
-                    <input placeholder="Full Name" value={name} onChange={e=>setName(e.target.value)} className="w-full border p-2 rounded mt-3" />
-                    <input placeholder="City (e.g., Jaipur)" value={city} onChange={e=>setCity(e.target.value)} className="w-full border p-2 rounded mt-3" />
-                    <select value={role} onChange={e=>setRole(e.target.value)} className="w-full border p-2 rounded mt-3">
-                        <option value="traveler">Traveler (Seeking Help)</option>
-                        <option value="guardian">Guardian (Offering Help)</option>
+            <div className="min-h-screen p-4 flex items-center justify-center bg-gray-50">
+                <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
+                    <h2 className="text-2xl font-bold text-purple-700 mb-4">Setup Profile</h2>
+                    <input placeholder="Full Name" className="w-full border p-2 rounded mb-3" onChange={e=>setForm({...form, name: e.target.value})} />
+                    <input placeholder="City" className="w-full border p-2 rounded mb-3" onChange={e=>setForm({...form, city: e.target.value})} />
+                    <select className="w-full border p-2 rounded mb-4" onChange={e=>setForm({...form, role: e.target.value})}>
+                        <option value="traveler">Traveler</option>
+                        <option value="guardian">Guardian</option>
                     </select>
-                    <label className="block mt-3 font-medium">Profile Photo</label>
-                    <input type="file" accept="image/*" onChange={(e)=>handlePhotoUpload(e, setPhotoPreview)} className="mb-2" />
-                    {role === 'guardian' && (
-                        <>
-                            <label className="block mt-2 font-medium">Selfie (for verification)</label>
-                            <input type="file" accept="image/*" onChange={(e)=>handlePhotoUpload(e, setSelfiePreview)} />
-                            <input placeholder="Instagram/LinkedIn URL (optional)" value={socialLink} onChange={e=>setSocialLink(e.target.value)} className="w-full border p-2 rounded mt-3" />
-                        </>
-                    )}
-                    <button onClick={handleSubmit} className="w-full bg-purple-600 text-white p-3 rounded-xl mt-5 font-semibold">Save & Continue</button>
+                    <button onClick={() => { updateProfile(form); nav('/'); }} className="w-full bg-purple-600 text-white p-3 rounded-xl font-bold">Save</button>
                 </div>
             </div>
         );
     }
 
-    // Traveler Dashboard
     function TravelerDashboard() {
-        const { profile, logout, updateProfile } = useAuth();
-        const [sosMsg, setSosMsg] = useState('');
-        const [guardians, setGuardians] = useState([]);
-        const [helpRequests, setHelpRequests] = useState([]);
-        const navigate = useNavigate();
-
-        useEffect(() => {
-            // Load all guardians from storage (users with role guardian)
-            const users = loadData(STORAGE_KEYS.USERS);
-            const guardianList = users.filter(u => u.role === 'guardian' && u.city === profile.city);
-            setGuardians(guardianList);
-            // Load help requests for this traveler
-            const requests = loadData(STORAGE_KEYS.HELP_REQUESTS).filter(r => r.travelerId === profile.id);
-            setHelpRequests(requests);
-        }, [profile]);
-
-        const requestHelp = (guardian) => {
-            const newRequest = {
-                id: 'req_' + Date.now(),
-                travelerId: profile.id,
-                guardianId: guardian.id,
-                travelerName: profile.name,
-                guardianName: guardian.name,
-                status: 'pending',
-                timestamp: new Date().toISOString(),
-                chatId: 'chat_' + Date.now(),
-                ratingGiven: false
-            };
-            const requests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-            requests.push(newRequest);
-            saveData(STORAGE_KEYS.HELP_REQUESTS, requests);
-            alert(`Help request sent to ${guardian.name}! They will be notified.`);
-            setHelpRequests([...helpRequests, newRequest]);
-        };
-
-        const sendSOS = () => {
-            const nearby = guardians.filter(g => g.isAvailable).slice(0, 3);
-            if (nearby.length === 0) {
-                setSosMsg("No nearby guardians available. Please try again later.");
-                setTimeout(()=>setSosMsg(''), 4000);
-                return;
-            }
-            // Create SOS alerts for each
-            const alerts = loadData(STORAGE_KEYS.SOS_ALERTS);
-            const newAlerts = nearby.map(g => ({
-                id: 'sos_' + Date.now() + '_' + g.id,
-                travelerId: profile.id,
-                guardianId: g.id,
-                travelerName: profile.name,
-                location: { lat: 26.9124, lng: 75.7873 }, // mock location
-                timestamp: new Date().toISOString(),
-                status: 'unread'
-            }));
-            saveData(STORAGE_KEYS.SOS_ALERTS, [...alerts, ...newAlerts]);
-            setSosMsg(`🚨 SOS sent to ${nearby.map(g=>g.name).join(', ')}! Live location shared.`);
-            setTimeout(()=>setSosMsg(''), 5000);
-        };
-
-        const openChat = (request) => {
-            navigate(`/chat/${request.chatId}?travelerId=${profile.id}&guardianId=${request.guardianId}&role=traveler&otherName=${request.guardianName}`);
-        };
-
-        // Rating component for completed requests
-        const RateGuardian = ({ request }) => {
-            const [rating, setRating] = useState(0);
-            const [review, setReview] = useState('');
-            const submitRating = () => {
-                if (rating === 0) return alert('Please select a rating');
-                // Update request
-                const requests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-                const idx = requests.findIndex(r => r.id === request.id);
-                if (idx !== -1) {
-                    requests[idx].ratingGiven = true;
-                    requests[idx].ratingValue = rating;
-                    requests[idx].review = review;
-                    saveData(STORAGE_KEYS.HELP_REQUESTS, requests);
-                    // Update guardian's average rating and helps completed
-                    const users = loadData(STORAGE_KEYS.USERS);
-                    const guardianIdx = users.findIndex(u => u.id === request.guardianId);
-                    if (guardianIdx !== -1) {
-                        const guardian = users[guardianIdx];
-                        const helps = (guardian.helpsCompleted || 0) + 1;
-                        const currentAvg = guardian.ratingAvg || 0;
-                        const newAvg = ((currentAvg * (helps - 1)) + rating) / helps;
-                        users[guardianIdx] = { ...guardian, helpsCompleted: helps, ratingAvg: newAvg };
-                        saveData(STORAGE_KEYS.USERS, users);
-                    }
-                    alert('Thank you for rating!');
-                    window.location.reload(); // refresh to update UI
-                }
-            };
-            return (
-                <div className="fixed bottom-20 left-0 right-0 bg-white p-4 shadow-xl rounded-t-2xl border-t border-gray-200 z-50">
-                    <p className="font-bold">Rate your experience with {request.guardianName}</p>
-                    <div className="star-rating flex gap-1 my-2">
-                        {[1,2,3,4,5].map(s=> (
-                            <i key={s} className={`fa-star text-2xl ${s<=rating ? 'fas text-yellow-500' : 'far text-gray-400'}`} onClick={()=>setRating(s)}></i>
-                        ))}
-                    </div>
-                    <textarea placeholder="Optional review" value={review} onChange={e=>setReview(e.target.value)} className="w-full border rounded p-2 mt-2" />
-                    <button onClick={submitRating} className="w-full bg-purple-600 text-white py-2 rounded-full mt-3">Submit Rating</button>
-                </div>
-            );
-        };
-
+        const { user, logout } = useAuth();
+        const guardians = loadData(STORAGE_KEYS.USERS).filter(u => u.role === 'guardian' && u.city === user.city);
         return (
-            <div className="p-4 max-w-4xl mx-auto pb-20">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-purple-700">Welcome, {profile.name} ✈️</h1>
-                    <button onClick={logout} className="text-red-500 text-sm">Logout</button>
-                </div>
-                <button onClick={sendSOS} className="sos-btn fixed bottom-6 right-6 bg-red-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-2xl z-50 text-xl font-bold">SOS</button>
-                {sosMsg && <div className="bg-red-100 text-red-800 p-3 rounded-lg my-3">{sosMsg}</div>}
-                <div className="mt-5 bg-white p-4 rounded-xl shadow-sm">
-                    <h2 className="font-semibold">🔐 Trusted Guardians in {profile.city}</h2>
-                    <div className="grid gap-3 mt-3">
-                        {guardians.map(g => (
-                            <div key={g.id} className="border rounded-xl p-3 flex justify-between items-center card-hover bg-gray-50">
-                                <div className="flex items-center gap-3">
-                                    {g.photoURL ? <img src={g.photoURL} className="w-12 h-12 rounded-full object-cover" /> : <i className="fas fa-user-circle text-4xl text-gray-400"></i>}
-                                    <div>
-                                        <p className="font-bold">{g.name}</p>
-                                        <div className="flex gap-1 text-xs">
-                                            {g.verificationBadge === 'Basic Verified' && <span className="bg-green-100 text-green-700 px-2 rounded-full">✅ Basic</span>}
-                                            {g.verificationBadge === 'Trusted' && <span className="bg-purple-100 text-purple-700 px-2 rounded-full">⭐ Trusted</span>}
-                                            <span>⭐ {g.ratingAvg?.toFixed(1) || 'New'}</span>
-                                            <span>📋 {g.helpsCompleted || 0} helps</span>
-                                            <span>📅 Joined {new Date(g.joinDate).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button onClick={()=>requestHelp(g)} className="bg-purple-600 text-white px-4 py-2 rounded-full text-sm">Request Help</button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                {/* Active Chats */}
-                {helpRequests.filter(r => r.status === 'accepted').length > 0 && (
-                    <div className="mt-5 bg-white p-4 rounded-xl shadow-sm">
-                        <h2 className="font-semibold">💬 Active Chats</h2>
-                        {helpRequests.filter(r => r.status === 'accepted').map(req => (
-                            <div key={req.id} className="border p-3 rounded-xl mt-2 flex justify-between items-center">
-                                <span>Chat with {req.guardianName}</span>
-                                <button onClick={()=>openChat(req)} className="bg-purple-100 text-purple-700 px-4 py-1 rounded-full">Open</button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {/* Pending Requests */}
-                {helpRequests.filter(r => r.status === 'pending').length > 0 && (
-                    <div className="mt-5 bg-yellow-50 p-4 rounded-xl shadow-sm">
-                        <h2 className="font-semibold">⏳ Pending Requests</h2>
-                        {helpRequests.filter(r => r.status === 'pending').map(req => (
-                            <div key={req.id} className="border p-2 rounded mt-2">Waiting for {req.guardianName} to accept...</div>
-                        ))}
-                    </div>
-                )}
-                {/* Rating Modal */}
-                {helpRequests.some(r => r.status === 'completed' && !r.ratingGiven) && (
-                    helpRequests.filter(r => r.status === 'completed' && !r.ratingGiven).map(req => (
-                        <RateGuardian key={req.id} request={req} />
-                    ))
-                )}
-                <div className="mt-5">
-                    <h3 className="font-semibold">📍 Nearby Guardians (Approximate)</h3>
-                    <div className="map-placeholder flex flex-col items-center justify-center text-gray-500">
-                        <i className="fas fa-map-marker-alt text-3xl mb-2"></i>
-                        <p>Map view: guardian locations in {profile.city}</p>
-                        <p className="text-xs">(demo map)</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Guardian Dashboard
-    function GuardianDashboard() {
-        const { profile, logout, updateProfile } = useAuth();
-        const [available, setAvailable] = useState(profile?.isAvailable ?? true);
-        const [requests, setRequests] = useState([]);
-        const [activeChats, setActiveChats] = useState([]);
-        const [sosAlerts, setSosAlerts] = useState([]);
-        const navigate = useNavigate();
-
-        useEffect(() => {
-            const allRequests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-            const myRequests = allRequests.filter(r => r.guardianId === profile.id);
-            setRequests(myRequests);
-            // active chats are accepted requests
-            const active = myRequests.filter(r => r.status === 'accepted');
-            setActiveChats(active);
-            // SOS alerts for this guardian
-            const alerts = loadData(STORAGE_KEYS.SOS_ALERTS).filter(a => a.guardianId === profile.id && a.status === 'unread');
-            setSosAlerts(alerts);
-        }, [profile]);
-
-        const toggleAvailability = () => {
-            const newStatus = !available;
-            setAvailable(newStatus);
-            updateProfile({ ...profile, isAvailable: newStatus });
-        };
-
-        const acceptRequest = (req) => {
-            const allRequests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-            const idx = allRequests.findIndex(r => r.id === req.id);
-            if (idx !== -1) {
-                allRequests[idx].status = 'accepted';
-                saveData(STORAGE_KEYS.HELP_REQUESTS, allRequests);
-                setRequests(allRequests.filter(r => r.guardianId === profile.id));
-                setActiveChats([...activeChats, { ...req, status: 'accepted' }]);
-                alert(`Request accepted! You can now chat with ${req.travelerName}.`);
-            }
-        };
-
-        const declineRequest = (req) => {
-            const allRequests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-            const idx = allRequests.findIndex(r => r.id === req.id);
-            if (idx !== -1) {
-                allRequests[idx].status = 'declined';
-                saveData(STORAGE_KEYS.HELP_REQUESTS, allRequests);
-                setRequests(allRequests.filter(r => r.guardianId === profile.id));
-            }
-        };
-
-        const completeRequest = (req) => {
-            const allRequests = loadData(STORAGE_KEYS.HELP_REQUESTS);
-            const idx = allRequests.findIndex(r => r.id === req.id);
-            if (idx !== -1) {
-                allRequests[idx].status = 'completed';
-                saveData(STORAGE_KEYS.HELP_REQUESTS, allRequests);
-                setRequests(allRequests.filter(r => r.guardianId === profile.id));
-                setActiveChats(activeChats.filter(c => c.id !== req.id));
-                alert('Help completed. Thank you for your service!');
-            }
-        };
-
-        const openChat = (req) => {
-            navigate(`/chat/${req.chatId}?travelerId=${req.travelerId}&guardianId=${profile.id}&role=guardian&otherName=${req.travelerName}`);
-        };
-
-        const dismissSOS = (alertId) => {
-            const alerts = loadData(STORAGE_KEYS.SOS_ALERTS);
-            const idx = alerts.findIndex(a => a.id === alertId);
-            if (idx !== -1) {
-                alerts[idx].status = 'read';
-                saveData(STORAGE_KEYS.SOS_ALERTS, alerts);
-                setSosAlerts(alerts.filter(a => a.guardianId === profile.id && a.status === 'unread'));
-            }
-        };
-
-        return (
-            <div className="p-4 max-w-4xl mx-auto">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-green-700">Guardian Panel - {profile.name}</h1>
+            <div className="p-6 max-w-2xl mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold text-purple-700">Hi, {user.name} ✈️</h1>
                     <button onClick={logout} className="text-red-500">Logout</button>
                 </div>
-                <div className="flex justify-between bg-white p-4 rounded-xl mt-3 items-center">
-                    <span>Availability: {available ? "🟢 Available" : "🔴 Busy"}</span>
-                    <button onClick={toggleAvailability} className="bg-gray-700 text-white px-4 py-2 rounded-full">{available ? "Set Busy" : "Set Available"}</button>
-                </div>
-                {/* SOS Alerts */}
-                {sosAlerts.length > 0 && (
-                    <div className="mt-6 bg-red-50 p-4 rounded-xl border border-red-200">
-                        <h3 className="font-bold text-red-700">🚨 SOS Alerts!</h3>
-                        {sosAlerts.map(alert => (
-                            <div key={alert.id} className="border-b py-2">
-                                <p><strong>{alert.travelerName}</strong> needs immediate help! Location: {alert.location.lat.toFixed(4)},{alert.location.lng.toFixed(4)}</p>
-                                <button onClick={()=>dismissSOS(alert.id)} className="bg-red-600 text-white text-sm px-3 py-1 rounded-full mt-1">Mark Responded</button>
+                <div className="bg-white p-4 rounded-xl shadow mb-6">
+                    <h2 className="font-bold mb-4">🛡️ Trusted Guardians in {user.city}</h2>
+                    {guardians.map(g => (
+                        <div key={g.id} className="flex justify-between items-center border-b py-3 last:border-0">
+                            <div>
+                                <p className="font-bold">{g.name}</p>
+                                <p className="text-xs text-purple-600 font-semibold">{g.verificationBadge}</p>
                             </div>
-                        ))}
-                    </div>
-                )}
-                {/* Incoming Requests */}
-                <div className="mt-5">
-                    <h2 className="font-semibold text-xl">📞 Incoming Help Requests</h2>
-                    {requests.filter(r => r.status === 'pending').map(req => (
-                        <div key={req.id} className="border p-3 rounded-xl mt-2 bg-white">
-                            <p>Traveler: {req.travelerName}</p>
-                            <div className="flex gap-3 mt-2">
-                                <button onClick={()=>acceptRequest(req)} className="bg-green-600 text-white px-4 py-1 rounded-full">Accept</button>
-                                <button onClick={()=>declineRequest(req)} className="bg-red-500 text-white px-4 py-1 rounded-full">Decline</button>
-                            </div>
+                            <Link to={`/chat/${g.id}?role=traveler&otherName=${g.name}`} className="bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-sm">Help</Link>
                         </div>
                     ))}
-                    {requests.filter(r => r.status === 'pending').length === 0 && (
-                        <p className="text-gray-400 text-sm mt-2">No pending requests</p>
-                    )}
                 </div>
-                {/* Active Chats */}
-                {activeChats.length > 0 && (
-                    <div className="mt-5">
-                        <h2 className="font-semibold text-xl">💬 Active Chats</h2>
-                        {activeChats.map(chat => (
-                            <div key={chat.id} className="border p-3 rounded-xl mt-2 bg-purple-50 flex justify-between items-center">
-                                <span>Chat with {chat.travelerName}</span>
-                                <div className="flex gap-2">
-                                    <button onClick={()=>openChat(chat)} className="bg-purple-600 text-white px-4 py-1 rounded-full">Open</button>
-                                    <button onClick={()=>completeRequest(chat)} className="bg-green-600 text-white px-4 py-1 rounded-full">Complete</button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {/* Trust Indicators */}
-                <div className="mt-6 bg-gray-50 p-4 rounded-xl">
-                    <h3 className="font-semibold">🌟 Your Trust Profile</h3>
-                    <p>Verification: {profile.verificationBadge}</p>
-                    <p>Profile Completeness: {profile.profileCompleteness}%</p>
-                    <p>Joined: {new Date(profile.joinDate).toLocaleDateString()}</p>
-                    <p>Helps Completed: {profile.helpsCompleted || 0}</p>
-                    <p>Rating: {profile.ratingAvg?.toFixed(1) || 'New'}</p>
+                <div className="map-placeholder">Interactive Map (Demo)</div>
+                <button className="sos-btn fixed bottom-8 right-8 bg-red-600 text-white w-16 h-16 rounded-full font-bold shadow-lg">SOS</button>
+            </div>
+        );
+    }
+
+    function GuardianDashboard() {
+        const { user, logout } = useAuth();
+        return (
+            <div className="p-6 max-w-2xl mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold text-green-700">Guardian Panel</h1>
+                    <button onClick={logout} className="text-red-500">Logout</button>
+                </div>
+                <div className="bg-green-50 p-6 rounded-xl border border-green-200 text-center">
+                    <p className="text-green-800 font-bold">You are currently Active</p>
+                    <p className="text-sm text-green-600">Waiting for nearby travelers...</p>
                 </div>
             </div>
         );
     }
 
-    // Chat Page
     function ChatPage() {
         const { user } = useAuth();
         const { chatId } = useParams();
-        const location = useLocation();
-        const queryParams = new URLSearchParams(location.search);
-        const travelerId = queryParams.get('travelerId');
-        const guardianId = queryParams.get('guardianId');
-        const role = queryParams.get('role');
-        const otherName = queryParams.get('otherName');
-        const [messages, setMessages] = useState([]);
-        const [newMsg, setNewMsg] = useState('');
-        const messagesEnd = useRef(null);
-        const navigate = useNavigate();
-
-        // Load messages for this chat
-        useEffect(() => {
-            const chats = loadData(STORAGE_KEYS.CHATS);
-            const chat = chats.find(c => c.id === chatId);
-            if (chat) {
-                setMessages(chat.messages || []);
-            } else {
-                // initialize empty chat
-                const newChat = { id: chatId, messages: [] };
-                chats.push(newChat);
-                saveData(STORAGE_KEYS.CHATS, chats);
-                setMessages([]);
-            }
-        }, [chatId]);
-
-        // Save messages to storage
-        const saveMessages = (updatedMessages) => {
-            const chats = loadData(STORAGE_KEYS.CHATS);
-            const idx = chats.findIndex(c => c.id === chatId);
-            if (idx !== -1) {
-                chats[idx].messages = updatedMessages;
-                saveData(STORAGE_KEYS.CHATS, chats);
-            }
-            setMessages(updatedMessages);
-        };
-
-        const sendMessage = () => {
-            if (!newMsg.trim()) return;
-            const newMessage = {
-                id: Date.now(),
-                text: newMsg,
-                senderId: user.id,
-                senderName: user.name,
-                timestamp: new Date().toISOString(),
-                type: 'text'
-            };
-            const updated = [...messages, newMessage];
-            saveMessages(updated);
-            setNewMsg('');
-        };
-
-        const shareLocation = () => {
-            const locMsg = `📍 Shared location: https://maps.google.com/?q=26.9124,75.7873 (Jaipur)`;
-            const newMessage = {
-                id: Date.now(),
-                text: locMsg,
-                senderId: user.id,
-                senderName: user.name,
-                timestamp: new Date().toISOString(),
-                type: 'location'
-            };
-            const updated = [...messages, newMessage];
-            saveMessages(updated);
-        };
-
-        useEffect(() => {
-            messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
-        }, [messages]);
-
+        const name = new URLSearchParams(useLocation().search).get('otherName');
         return (
-            <div className="flex flex-col h-screen max-w-2xl mx-auto bg-white">
-                <div className="bg-purple-700 p-4 text-white font-bold flex justify-between">
-                    <span>💬 Chat with {otherName || (role === 'traveler' ? 'Guardian' : 'Traveler')}</span>
-                    <Link to={role === 'guardian' ? '/guardian-dashboard' : '/traveler-dashboard'} className="text-sm underline">← Back</Link>
+            <div className="h-screen flex flex-col">
+                <div className="bg-purple-700 p-4 text-white flex justify-between">
+                    <span className="font-bold">Chat with {name}</span>
+                    <Link to="/" className="text-sm underline">Back</Link>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 chat-container">
-                    {messages.map(m => (
-                        <div key={m.id} className={`flex ${m.senderId === user.id ? 'justify-end' : 'justify-start'} mb-3`}>
-                            <div className={`max-w-xs p-3 rounded-xl ${m.senderId === user.id ? 'bg-purple-500 text-white' : 'bg-gray-200'}`}>
-                                <div className="text-xs opacity-70 mb-1">{m.senderName}</div>
-                                {m.text}
-                            </div>
-                        </div>
-                    ))}
-                    <div ref={messagesEnd} />
+                <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
+                    <div className="bg-white p-3 rounded-lg shadow-sm max-w-xs">Hello! I'm here to help. Where are you?</div>
                 </div>
-                <div className="p-3 border-t flex gap-2">
-                    <button onClick={shareLocation} className="bg-green-500 text-white px-3 rounded-full"><i className="fas fa-location-dot"></i> Share</button>
-                    <input value={newMsg} onChange={e=>setNewMsg(e.target.value)} className="flex-1 border rounded-full px-4 py-2" placeholder="Type message..." />
-                    <button onClick={sendMessage} className="bg-purple-600 text-white px-5 rounded-full">Send</button>
+                <div className="p-4 border-t flex gap-2 bg-white">
+                    <input className="flex-1 border rounded-full px-4" placeholder="Type..." />
+                    <button className="bg-purple-600 text-white px-6 py-2 rounded-full">Send</button>
                 </div>
             </div>
         );
     }
 
-    // Main Router
     function App() {
-        const { user, profile, loading } = useAuth();
-        if (loading) return <div className="flex justify-center items-center h-screen">Loading Safe Space...</div>;
+        const { user } = useAuth();
         if (!user) return <PhoneAuth />;
-        if (!profile?.name) return <ProfileSetup />;
+        if (!user.name) return <ProfileSetup />;
         return (
             <Routes>
-                <Route path="/" element={
-                    profile.role === 'traveler' ? <Navigate to="/traveler-dashboard" /> : <Navigate to="/guardian-dashboard" />
-                } />
-                <Route path="/profile-setup" element={<ProfileSetup />} />
-                <Route path="/traveler-dashboard" element={profile.role === 'traveler' ? <TravelerDashboard /> : <Navigate to="/guardian-dashboard" />} />
-                <Route path="/guardian-dashboard" element={profile.role === 'guardian' ? <GuardianDashboard /> : <Navigate to="/traveler-dashboard" />} />
                 <Route path="/chat/:chatId" element={<ChatPage />} />
+                <Route path="/" element={user.role === 'traveler' ? <TravelerDashboard /> : <GuardianDashboard />} />
             </Routes>
         );
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(
-        <BrowserRouter>
+        <HashRouter>
             <AuthProvider>
                 <App />
             </AuthProvider>
-        </BrowserRouter>
+        </HashRouter>
     );
 </script>
 </body>
