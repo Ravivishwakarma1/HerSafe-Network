@@ -3,46 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HerSafe | Guardian Portal</title>
+    <title>HerSafe Network</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="app" class="app-container">
-        <section id="login-page" class="page active">
+        
+        <section id="role-page" class="page active">
             <div class="card">
+                <img src="HerSafe Logo.jpg" alt="HerSafe Logo" class="main-logo">
                 <h1 class="brand">HerSafe</h1>
-                <p class="subtitle">Guardian Login</p>
-                <div class="input-group">
-                    <label>Phone Number</label>
-                    <input type="tel" id="phone" placeholder="+91 00000 00000">
-                </div>
-                <button onclick="requestOTP()" class="btn-primary">Get OTP</button>
-                <div id="otp-section" class="hidden">
-                    <input type="text" id="otp" placeholder="Enter 6-digit OTP">
-                    <button onclick="verifyLogin()" class="btn-primary">Verify & Enter</button>
+                <p class="subtitle">Solo Women Travel Safety</p>
+                <div class="role-options">
+                    <button onclick="selectRole('Traveler')" class="btn-role-p">🙋‍♀️ Traveler</button>
+                    <button onclick="selectRole('Guardian')" class="btn-role-g">🛡️ Guardian</button>
                 </div>
             </div>
         </section>
 
-        <section id="verify-page" class="page">
+        <section id="login-page" class="page">
             <div class="card">
-                <h2>Trust Verification</h2>
-                <p class="info-text">Complete these steps to become a <b>Trusted Guardian</b>.</p>
-                
-                <div class="verify-item">
-                    <span>Step 1: Identity Check</span>
-                    <input type="file" id="selfie" accept="image/*" class="file-input">
-                    <label for="selfie" class="btn-outline">Upload Selfie</label>
-                </div>
-
-                <div class="verify-item">
-                    <span>Step 2: Social Link (Optional)</span>
-                    <input type="url" id="social-link" placeholder="LinkedIn or Instagram URL">
-                </div>
-
-                <button onclick="submitVerification()" class="btn-success">Submit for Verification</button>
+                <button onclick="navigateTo('role-page')" class="btn-back">←</button>
+                <img src="HerSafe Logo.jpg" alt="Logo" class="small-logo">
+                <h2>Login</h2>
+                <input type="email" id="email" placeholder="ravivishwakarma5754@gmail.com">
+                <button onclick="sendEmailCode()" class="btn-primary">Send Code</button>
             </div>
         </section>
+
+        <section id="otp-page" class="page">
+            <div class="card">
+                <img src="HerSafe Logo.jpg" alt="Logo" class="small-logo">
+                <h2>Verify Email</h2>
+                <p>Code: <b>888888</b></p>
+                <input type="text" id="otp-input" placeholder="000000" maxlength="6">
+                <button onclick="verifyAndProfile()" class="btn-primary">Verify</button>
+                <div class="timer-container">
+                    <p id="timer-text">Resend in <span id="seconds">60</span>s</p>
+                    <button id="resend-btn" onclick="sendEmailCode()" class="btn-link hidden">Resend Email</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="setup-page" class="page">
+            <div class="card">
+                <img src="HerSafe Logo.jpg" alt="Logo" class="small-logo">
+                <h2>Complete Profile</h2>
+                <div class="input-group">
+                    <input type="text" id="setup-name" placeholder="Full Name">
+                    <input type="tel" id="setup-phone" placeholder="Phone Number">
+                    <input type="text" id="setup-city" placeholder="City">
+                    <input type="text" id="setup-social" placeholder="Social Link (Instagram/LinkedIn)">
+                    <input type="text" id="setup-lang" placeholder="Languages Known">
+                    <textarea id="setup-bio" placeholder="Bio (Short intro)"></textarea>
+                </div>
+                <button onclick="finishOnboarding()" class="btn-success">Start Exploring</button>
+            </div>
+        </section>
+
+        <section id="main-dashboard" class="page">
+            <div class="scroll-area">
+                
+                <div id="tab-home" class="tab-content active">
+                    <header class="dash-header">
+                        <img src="HerSafe Logo.jpg" alt="Logo" class="nav-logo">
+                        <div class="header-text">
+                            <h2 id="dash-welcome">Hi, Ravi!</h2>
+                            <span class="loc-tag">📍 <span id="dash-city">Chandauli</span></span>
+                        </div>
+                    </header>
+                    <div id="traveler-home">
+                        <div class="sos-card">
+                            <button onclick="triggerSOS()" class="sos-btn">SOS</button>
+                            <p>Alert 3 nearby Guardians</p>
+                        </div>
+                        <div class="map-box">Safety Map Active</div>
+                        <h3>Nearby Guardians</h3>
+                        <div id="guardian-list" class="list-container"></div>
+                    </div>
+                    <div id="guardian-home" class="hidden">
+                        <div class="info-card">
+                            <label><b>Status:</b></label>
+                            <select id="duty-status" onchange="updateDutyStatus()" class="input-f">
+                                <option value="Available">🟢 Available</option>
+                                <option value="Busy">🔴 Busy</option>
+                            </select>
+                        </div>
+                        <h3>Active SOS Alerts</h3>
+                        <p class="empty-msg">No alerts nearby.</p>
+                    </div>
+                </div>
+
+                <div id="tab-trips" class="tab-content">
+                    <div class="dash-header">
+                        <h2 id="trip-header">My Trips</h2>
+                        <button id="add-btn" class="btn-add" onclick="openTripModal()">+ New</button>
+                    </div>
+                    <div id="trips-list" class="list-container"></div>
+                </div>
+
+                <div id="tab-account" class="tab-content">
+                    <div class="profile-card">
+                        <img src="HerSafe Logo.jpg" alt="Logo" class="profile-avatar">
+                        <h2 id="acc-name-display">Ravi Vishwakarma</h2>
+                        <span class="role-badge" id="acc-role-display">Traveler</span>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Trust & Verification</h3>
+                        <p><b>Selfie Verified:</b> <span class="text-green">Yes</span></p>
+                        <p><b>Bio:</b> <span id="acc-bio-display">...</span></p>
+                        <p><b>Social:</b> <span id="acc-social-display">None</span></p>
+                        <p><b>Languages:</b> <span id="acc-lang-display">Hindi</span></p>
+                    </div>
+
+                    <div id="traveler-acc-fields" class="info-card">
+                        <h3>Traveler Details</h3>
+                        <p>📞 Emergency: 9876543210</p>
+                        <p>🕒 Last Active: <span id="acc-active-time"></span></p>
+                        <p>🗺️ Travel Status: Active</p>
+                    </div>
+
+                    <div id="guardian-acc-fields" class="info-card hidden">
+                        <h3>Guardian Stats</h3>
+                        <p>🎯 Radius: 5km</p>
+                        <p>🤝 Helps: 14</p>
+                        <p>⭐ Rating: 4.9</p>
+                    </div>
+
+                    <button onclick="location.reload()" class="btn-logout">Logout Account</button>
+                </div>
+
+            </div>
+
+            <nav class="bottom-nav">
+                <button class="nav-item active" onclick="switchTab('tab-home', this)">🏠<small>Home</small></button>
+                <button class="nav-item" onclick="switchTab('tab-trips', this)">✈️<small id="nav-label">Trips</small></button>
+                <button class="nav-item" onclick="switchTab('tab-account', this)">👤<small>Account</small></button>
+            </nav>
+        </section>
+
+        <div id="trip-modal" class="modal hidden">
+            <div class="modal-box">
+                <h3>Advanced Trip Manager</h3>
+                <input type="text" id="t-dest" placeholder="Destination Name">
+                <div class="grid">
+                    <input type="date" id="t-dep" onchange="calcDays()" title="Departure">
+                    <input type="date" id="t-arr" onchange="calcDays()" title="Arrival">
+                </div>
+                <div class="grid">
+                    <select id="t-mode"><option>Train</option><option>Bus</option><option>Flight</option><option>Car</option></select>
+                    <select id="t-type"><option value="Solo">Solo Trip</option><option value="Group">Group Trip</option></select>
+                </div>
+                <input type="number" id="t-dist" placeholder="Total Distance (km)">
+                <input type="number" id="t-members" placeholder="No. of Persons (Group)">
+                <input type="text" id="t-days" placeholder="Total Days" readonly>
+                <input type="text" id="t-links" placeholder="Photo/Video Gallery Links">
+                <div class="modal-btns">
+                    <button onclick="saveTrip()" class="btn-primary">Save Trip</button>
+                    <button onclick="closeTripModal()" class="btn-logout" style="margin:0">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
